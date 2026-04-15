@@ -1,11 +1,11 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from agent import kaltum_agent
+from agent import kaltum_agent, clear_session
 
 app = FastAPI()
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,26 +16,36 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     user_input: str
+    session_id: str = "default"
+
+class ClearRequest(BaseModel):
+    session_id: str = "default"
 
 @app.get("/")
 def home():
-    return {"message": "Kaltum AI Agent is running 🚀"}
+    return {"message": "Kaltum AI Agent v2 is running"}
 
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-        "agent_loaded": kaltum_agent is not None
-    }
+    return {"status": "ok"}
 
-# ✅ GET (browser testing)
 @app.get("/chat")
-def chat_get(user_input: str = "Hello"):
-    response = kaltum_agent(user_input)
-    return {"response": response}
+def chat_get(user_input: str = "Hello", session_id: str = "default"):
+    try:
+        response = kaltum_agent(user_input.strip(), session_id)
+        return {"response": response, "session_id": session_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ✅ POST (frontend / production)
 @app.post("/chat")
-def chat(request: ChatRequest):
-    response = kaltum_agent(request.user_input)
-    return {"response": response}
+def chat_post(request: ChatRequest):
+    try:
+        response = kaltum_agent(request.user_input, request.session_id)
+        return {"response": response, "session_id": request.session_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/clear")
+def clear(request: ClearRequest):
+    clear_session(request.session_id)
+    return {"message": "Session cleared."}
