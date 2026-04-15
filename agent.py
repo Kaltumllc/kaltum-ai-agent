@@ -59,7 +59,7 @@ def kaltum_agent(user_input, session_id="default"):
 
     for _ in range(5):
         response = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-haiku-4-5",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             tools=TOOLS,
