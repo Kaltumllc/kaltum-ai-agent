@@ -1,15 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from agent import kaltum_agent
 
 app = FastAPI()
 
-try:
-    from agent import kaltum_agent
-except Exception as e:
-    print("Agent import error:", e)
-    kaltum_agent = None
-
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,6 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# JSON model
 class ChatRequest(BaseModel):
     user_input: str
 
@@ -25,17 +22,16 @@ class ChatRequest(BaseModel):
 def home():
     return {"message": "Kaltum AI Agent is running 🚀"}
 
+# ✅ ADD THIS
 @app.get("/health")
 def health():
-    return {"status": "ok", "agent_loaded": kaltum_agent is not None}
+    return {
+        "status": "ok",
+        "agent_loaded": kaltum_agent is not None
+    }
 
+# Chat endpoint
 @app.post("/chat")
 def chat(request: ChatRequest):
-    if not kaltum_agent:
-        return {"response": "⚠️ AI not available"}
-
-    try:
-        response = kaltum_agent(request.user_input)
-        return {"response": response}
-    except Exception as e:
-        return {"response": f"❌ Error: {str(e)}"}
+    response = kaltum_agent(request.user_input)
+    return {"response": response}
