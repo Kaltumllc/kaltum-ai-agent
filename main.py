@@ -4,14 +4,12 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-# Safe import
 try:
     from agent import kaltum_agent
 except Exception as e:
     print("Agent import error:", e)
     kaltum_agent = None
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
