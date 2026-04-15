@@ -14,7 +14,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# JSON model
 class ChatRequest(BaseModel):
     user_input: str
 
@@ -22,7 +21,6 @@ class ChatRequest(BaseModel):
 def home():
     return {"message": "Kaltum AI Agent is running 🚀"}
 
-# ✅ ADD THIS
 @app.get("/health")
 def health():
     return {
@@ -30,7 +28,13 @@ def health():
         "agent_loaded": kaltum_agent is not None
     }
 
-# Chat endpoint
+# ✅ GET (browser testing)
+@app.get("/chat")
+def chat_get(user_input: str = "Hello"):
+    response = kaltum_agent(user_input)
+    return {"response": response}
+
+# ✅ POST (frontend / production)
 @app.post("/chat")
 def chat(request: ChatRequest):
     response = kaltum_agent(request.user_input)
