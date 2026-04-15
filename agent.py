@@ -50,22 +50,28 @@ def process_tool_call(tool_name, tool_input):
 def kaltum_agent(user_input, session_id="default"):
     if session_id not in sessions:
         sessions[session_id] = []
+
     history = sessions[session_id]
     history.append({"role": "user", "content": user_input})
+
     if len(history) > MAX_HISTORY:
         history[:] = history[-MAX_HISTORY:]
+
     for _ in range(5):
         response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-haiku-20240307",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             tools=TOOLS,
             messages=history
         )
+
         history.append({"role": "assistant", "content": response.content})
+
         if response.stop_reason == "end_turn":
             text_blocks = [b.text for b in response.content if hasattr(b, "text")]
             return " ".join(text_blocks)
+
         if response.stop_reason == "tool_use":
             tool_results = []
             for block in response.content:
@@ -79,6 +85,7 @@ def kaltum_agent(user_input, session_id="default"):
             history.append({"role": "user", "content": tool_results})
         else:
             break
+
     return "I am sorry, something went wrong. Please try again."
 
 
