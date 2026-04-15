@@ -1,6 +1,4 @@
-@"
 import os
-import json
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from tools import book_consultation, generate_quote
@@ -9,54 +7,31 @@ load_dotenv()
 
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# In-memory session store: session_id -> list of messages
-sessions: dict[str, list] = {}
-MAX_HISTORY = 20  # max messages kept per session to prevent memory bloat
+sessions = {}
+MAX_HISTORY = 20
 
-SYSTEM_PROMPT = """You are Kaltum, a professional AI assistant for a consulting and web services business.
-
-You help users with:
-- Booking consultations
-- Getting price quotes for services (website, branding, SEO, social media management)
-- Answering questions about services offered
-
-Personality: warm, professional, concise. Never robotic.
-
-When a user wants to book a consultation, you MUST collect their full name and email address first before calling book_consultation.
-When a user asks about pricing or quotes, ask what service they need if not specified, then call generate_quote.
-
-Available services for quotes: website, branding, seo, social_media
-"""
+SYSTEM_PROMPT = """You are Kaltum, a professional AI assistant for a consulting and web services business. You help users book consultations, get price quotes, and learn about services. Be warm, professional, and concise. Collect name and email before booking. Ask which service before quoting. Services: website, branding, seo, social_media."""
 
 TOOLS = [
     {
         "name": "book_consultation",
-        "description": "Books a consultation for a client. Only call this after you have the client's name and email.",
+        "description": "Books a consultation. Only call after collecting client name and email.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "The client's full name"
-                },
-                "email": {
-                    "type": "string",
-                    "description": "The client's email address"
-                }
+                "name": {"type": "string", "description": "Client full name"},
+                "email": {"type": "string", "description": "Client email address"}
             },
             "required": ["name", "email"]
         }
     },
     {
         "name": "generate_quote",
-        "description": "Generates a price quote for a requested service.",
+        "description": "Generates a price quote for a service.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "service": {
-                    "type": "string",
-                    "description": "The service to quote: website, branding, seo, or social_media"
-                }
+                "service": {"type": "string", "description": "Service: website, branding, seo, or social_media"}
             },
             "required": ["service"]
         }
@@ -64,7 +39,7 @@ TOOLS = [
 ]
 
 
-def process_tool_call(tool_name: str, tool_input: dict) -> str:
+def process_tool_call(tool_name, tool_input):
     if tool_name == "book_consultation":
         return book_consultation(tool_input["name"], tool_input["email"])
     elif tool_name == "generate_quote":
@@ -72,16 +47,13 @@ def process_tool_call(tool_name: str, tool_input: dict) -> str:
     return "Unknown tool."
 
 
-def kaltum_agent(user_input: str, session_id: str = "default") -> str:
+def kaltum_agent(user_input, session_id="default"):
     if session_id not in sessions:
         sessions[session_id] = []
-
     history = sessions[session_id]
     history.append({"role": "user", "content": user_input})
-
     if len(history) > MAX_HISTORY:
         history[:] = history[-MAX_HISTORY:]
-
     for _ in range(5):
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
@@ -90,13 +62,10 @@ def kaltum_agent(user_input: str, session_id: str = "default") -> str:
             tools=TOOLS,
             messages=history
         )
-
         history.append({"role": "assistant", "content": response.content})
-
         if response.stop_reason == "end_turn":
             text_blocks = [b.text for b in response.content if hasattr(b, "text")]
             return " ".join(text_blocks)
-
         if response.stop_reason == "tool_use":
             tool_results = []
             for block in response.content:
@@ -110,11 +79,9 @@ def kaltum_agent(user_input: str, session_id: str = "default") -> str:
             history.append({"role": "user", "content": tool_results})
         else:
             break
+    return "I am sorry, something went wrong. Please try again."
 
-    return "I'm sorry, something went wrong. Please try again."
 
-
-def clear_session(session_id: str = "default"):
+def clear_session(session_id="default"):
     if session_id in sessions:
         del sessions[session_id]
-"@ | Out-File -FilePath agent.py -Encoding utf8
