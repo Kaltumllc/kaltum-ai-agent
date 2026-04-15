@@ -1,217 +1,623 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Kaltum AI</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kaltum AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0c0b09;
+      --surface:   #141210;
+      --border:    #2a2520;
+      --gold:      #c9a96e;
+      --gold-dim:  #7a5f38;
+      --text:      #e8e0d4;
+      --muted:     #6b6157;
+      --user-bg:   #1a1510;
+      --bot-bg:    #111009;
+      --accent:    #d4b896;
+    }
 
-    <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-        font-family: "Segoe UI", Arial, sans-serif;
-        background: #0f172a;
-        color: white;
-        margin: 0;
+      font-family: 'DM Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }
 
-    .container {
-        max-width: 700px;
-        margin: auto;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
+    /* Noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
     }
 
-    .header {
-        padding: 18px;
-        font-size: 22px;
-        text-align: center;
-        background: #1e293b;
-        font-weight: bold;
-        border-bottom: 1px solid #334155;
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(680px, 100vw);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
     }
 
+    /* ── Header ── */
+    header {
+      padding: 22px 28px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 28px;
+      font-weight: 300;
+      letter-spacing: 0.12em;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .brand-sub {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 8px #4ade8088;
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* ── Chat Area ── */
     #chatBox {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 28px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      scroll-behavior: smooth;
     }
 
-    .message {
-        max-width: 75%;
-        padding: 12px 14px;
-        border-radius: 14px;
-        line-height: 1.5;
-        animation: fadeIn 0.25s ease-in;
+    #chatBox::-webkit-scrollbar { width: 3px; }
+    #chatBox::-webkit-scrollbar-track { background: transparent; }
+    #chatBox::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Messages ── */
+    .msg-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      animation: rise 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
-    .user {
-        background: #38bdf8;
-        align-self: flex-end;
-        color: black;
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    .bot {
-        background: #334155;
-        align-self: flex-start;
+    .msg-wrap.user { align-items: flex-end; }
+    .msg-wrap.bot  { align-items: flex-start; }
+
+    .msg-label {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 4px;
     }
 
-    .time {
-        font-size: 10px;
-        opacity: 0.5;
-        margin-top: 4px;
+    .bubble {
+      max-width: 82%;
+      padding: 13px 16px;
+      border-radius: 2px;
+      line-height: 1.65;
+      font-size: 13px;
     }
 
-    .input-area {
-        display: flex;
-        padding: 12px;
-        background: #1e293b;
-        border-top: 1px solid #334155;
+    .msg-wrap.user .bubble {
+      background: var(--user-bg);
+      border: 1px solid var(--border);
+      border-bottom-right-radius: 0;
+      color: var(--accent);
     }
 
-    input {
-        flex: 1;
-        padding: 12px;
-        border: none;
-        outline: none;
-        border-radius: 8px;
-        font-size: 14px;
+    .msg-wrap.bot .bubble {
+      background: var(--bot-bg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 0;
+      color: var(--text);
     }
 
-    button {
-        padding: 12px 18px;
-        background: #38bdf8;
-        border: none;
-        cursor: pointer;
-        margin-left: 8px;
-        border-radius: 8px;
-        font-weight: bold;
+    /* Markdown inside bot bubbles */
+    .bubble strong { color: var(--gold); font-weight: 600; }
+    .bubble em { font-style: italic; color: var(--accent); }
+    .bubble code {
+      font-family: 'DM Mono', monospace;
+      background: #1e1a14;
+      padding: 1px 5px;
+      border-radius: 2px;
+      font-size: 12px;
+      color: var(--gold);
+    }
+    .bubble ul, .bubble ol {
+      padding-left: 18px;
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .bubble li { color: var(--text); }
+    .bubble p + p { margin-top: 8px; }
+
+    .timestamp {
+      font-size: 9px;
+      color: var(--muted);
+      padding: 0 4px;
+      letter-spacing: 0.1em;
     }
 
-    button:hover {
-        background: #0ea5e9;
+    /* Typing indicator */
+    .typing-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-start;
+      animation: rise 0.3s ease both;
     }
 
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+    .typing-bubble {
+      padding: 13px 18px;
+      background: var(--bot-bg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 0;
+      display: flex;
+      gap: 5px;
+      align-items: center;
     }
 
-    .typing {
-        opacity: 0.6;
-        font-style: italic;
+    .typing-bubble span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      animation: blink 1.2s ease-in-out infinite;
     }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(6px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .typing-bubble span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-bubble span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.2; transform: scale(0.85); }
+      40% { opacity: 1; transform: scale(1); }
     }
-    </style>
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 4px 0;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .divider span {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    /* ── Suggestions ── */
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 28px 14px;
+      flex-shrink: 0;
+    }
+
+    .chip {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 1px;
+      transition: border-color 0.2s, color 0.2s;
+      text-transform: uppercase;
+    }
+
+    .chip:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    /* ── Input Area ── */
+    .input-row {
+      display: flex;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      padding: 14px 18px;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    #userInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+      caret-color: var(--gold);
+      letter-spacing: 0.03em;
+    }
+
+    #userInput::placeholder { color: var(--muted); }
+
+    #sendBtn {
+      background: transparent;
+      border: 1px solid var(--gold-dim);
+      color: var(--gold);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 1px;
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+
+    #sendBtn:hover:not(:disabled) {
+      background: var(--gold-dim);
+      border-color: var(--gold);
+    }
+
+    #sendBtn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    #clearBtn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-family: 'DM Mono', monospace;
+      cursor: pointer;
+      padding: 6px 4px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+
+    #clearBtn:hover { color: var(--gold-dim); }
+
+    /* ── Welcome ── */
+    .welcome {
+      margin: auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 40px 20px;
+    }
+
+    .welcome-glyph {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 52px;
+      color: var(--gold-dim);
+      line-height: 1;
+    }
+
+    .welcome-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .welcome-sub {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+      max-width: 280px;
+      line-height: 1.8;
+    }
+  </style>
 </head>
-
 <body>
 
-<div class="container">
-    <div class="header">🚀 Kaltum AI Assistant</div>
-    <div id="chatBox"></div>
-
-    <div class="input-area">
-        <input id="userInput" placeholder="Type your message..." autofocus />
-        <button id="sendBtn">Send</button>
+<div class="shell">
+  <header>
+    <div class="brand">
+      <div class="brand-name">Kaltum</div>
+      <div class="brand-sub">AI Consulting Assistant</div>
     </div>
+    <div class="status-dot">
+      <div class="dot"></div>
+      Online
+    </div>
+  </header>
+
+  <div id="chatBox">
+    <div class="welcome" id="welcome">
+      <div class="welcome-glyph">✦</div>
+      <div class="welcome-title">How can I assist you?</div>
+      <div class="welcome-sub">Ask about our services, request a quote, or book a consultation.</div>
+    </div>
+  </div>
+
+  <div class="suggestions" id="suggestions">
+    <button class="chip" onclick="quickSend('What services do you offer?')">Services</button>
+    <button class="chip" onclick="quickSend('I need a website quote')">Get a quote</button>
+    <button class="chip" onclick="quickSend('I want to book a consultation')">Book a call</button>
+    <button class="chip" onclick="quickSend('Tell me about your pricing')">Pricing</button>
+  </div>
+
+  <div class="input-row">
+    <input id="userInput" placeholder="Send a message…" autocomplete="off" autofocus />
+    <button id="clearBtn" title="Clear conversation" onclick="clearConversation()">↺ Clear</button>
+    <button id="sendBtn">Send</button>
+  </div>
 </div>
 
 <script>
-const API_URL = "https://kaltum-ai-agent.onrender.com/chat";
+const API_BASE = "https://kaltum-ai-agent.onrender.com";
+// Persist session across page refreshes
+let sessionId = localStorage.getItem("kaltum_session");
+if (!sessionId) {
+  sessionId = "session_" + Date.now();
+  localStorage.setItem("kaltum_session", sessionId);
+}
+let isTyping = false;
 
+// ── Init ──────────────────────────────────────────
 document.getElementById("sendBtn").addEventListener("click", sendMessage);
-document.getElementById("userInput").addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-        e.preventDefault();
-        sendMessage();
-    }
+document.getElementById("userInput").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
-async function sendMessage() {
-    const inputField = document.getElementById("userInput");
-    const sendBtn = document.getElementById("sendBtn");
-
-    const input = inputField.value.trim();
-    if (!input) return;
-
-    sendBtn.disabled = true;
-
-    appendMessage(input, "user");
-    inputField.value = "";
-    inputField.focus();
-
-    const typing = appendMessage("AI is typing...", "bot typing");
-    scrollToBottom();
-
-    try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ user_input: input })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        typing.remove();
-
-        appendMessage(
-            data.response || "⚠️ No response from AI",
-            "bot"
-        );
-
-    } catch (error) {
-        typing.innerText = "🌐 Server waking up... try again";
-        console.error("Error:", error);
-    } finally {
-        sendBtn.disabled = false;
-        scrollToBottom();
+// ── Retry fetch ───────────────────────────────────
+async function fetchWithRetry(url, options, retries = 2) {
+  try {
+    return await fetch(url, options);
+  } catch (err) {
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, 2000));
+      return fetchWithRetry(url, options, retries - 1);
     }
+    throw err;
+  }
 }
 
-function appendMessage(text, className) {
-    const chatBox = document.getElementById("chatBox");
+// ── Send ──────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById("userInput");
+  const sendBtn = document.getElementById("sendBtn");
+  const text = input.value.trim();
+  if (!text || isTyping) return;
 
-    const msg = document.createElement("div");
-    msg.className = `message ${className}`;
+  isTyping = true;
+  sendBtn.disabled = true;
+  hideWelcome();
+  hideSuggestions();
 
-    // Safe text (prevents HTML injection)
-    msg.textContent = text;
+  appendMessage(text, "user");
+  input.value = "";
+  input.focus();
 
-    const time = document.createElement("div");
-    time.className = "time";
-    time.textContent = new Date().toLocaleTimeString();
+  const typingEl = showTyping();
+  scrollToBottom();
 
-    msg.appendChild(time);
-    chatBox.appendChild(msg);
-
-    return msg;
-}
-
-function scrollToBottom() {
-    const chatBox = document.getElementById("chatBox");
-    chatBox.scrollTo({
-        top: chatBox.scrollHeight,
-        behavior: "smooth"
+  try {
+    const res = await fetchWithRetry(`${API_BASE}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_input: text, session_id: sessionId })
     });
+
+    typingEl.remove();
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      appendMessage("⚠ " + (err.detail || `Server error ${res.status}`), "bot");
+      return;
+    }
+
+    const data = await res.json();
+    appendMessage(data.response || "⚠ No response received.", "bot");
+
+  } catch (err) {
+    typingEl.remove();
+    appendMessage("⚠ Unable to reach the server. It may be waking up — please try again.", "bot");
+    console.error(err);
+  } finally {
+    isTyping = false;
+    sendBtn.disabled = false;
+    scrollToBottom();
+  }
+}
+
+function quickSend(text) {
+  document.getElementById("userInput").value = text;
+  sendMessage();
+}
+
+// ── Clear ─────────────────────────────────────────
+async function clearConversation() {
+  try {
+    await fetch(`${API_BASE}/clear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId })
+    });
+  } catch (_) {}
+
+  sessionId = "session_" + Date.now();
+  localStorage.setItem("kaltum_session", sessionId);
+  const chatBox = document.getElementById("chatBox");
+  chatBox.innerHTML = "";
+  showWelcome();
+  showSuggestions();
+}
+
+// ── Render ────────────────────────────────────────
+function appendMessage(text, role) {
+  const chatBox = document.getElementById("chatBox");
+
+  const wrap = document.createElement("div");
+  wrap.className = `msg-wrap ${role}`;
+
+  const label = document.createElement("div");
+  label.className = "msg-label";
+  label.textContent = role === "user" ? "You" : "Kaltum";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  if (role === "bot") {
+    bubble.innerHTML = renderMarkdown(text);
+  } else {
+    bubble.textContent = text;
+  }
+
+  const time = document.createElement("div");
+  time.className = "timestamp";
+  time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  wrap.appendChild(label);
+  wrap.appendChild(bubble);
+  wrap.appendChild(time);
+  chatBox.appendChild(wrap);
+
+  return wrap;
+}
+
+function showTyping() {
+  const chatBox = document.getElementById("chatBox");
+  const wrap = document.createElement("div");
+  wrap.className = "typing-wrap";
+
+  const label = document.createElement("div");
+  label.className = "msg-label";
+  label.textContent = "Kaltum";
+
+  const bubble = document.createElement("div");
+  bubble.className = "typing-bubble";
+  bubble.innerHTML = "<span></span><span></span><span></span>";
+
+  wrap.appendChild(label);
+  wrap.appendChild(bubble);
+  chatBox.appendChild(wrap);
+  return wrap;
+}
+
+// ── Simple Markdown renderer ──────────────────────
+function renderMarkdown(text) {
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`(.+?)`/g, "<code>$1</code>")
+    .replace(/^[-•] (.+)/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>")
+    .replace(/\n{2,}/g, "</p><p>")
+    .replace(/\n/g, "<br/>")
+    .replace(/^(?!<[uop]|<li)(.+)/, "<p>$1</p>");
+}
+
+// ── Helpers ───────────────────────────────────────
+function scrollToBottom() {
+  const chatBox = document.getElementById("chatBox");
+  chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: "smooth" });
+}
+
+function hideWelcome() {
+  const w = document.getElementById("welcome");
+  if (w) w.remove();
+}
+
+function showWelcome() {
+  const chatBox = document.getElementById("chatBox");
+  const w = document.createElement("div");
+  w.className = "welcome";
+  w.id = "welcome";
+  w.innerHTML = `
+    <div class="welcome-glyph">✦</div>
+    <div class="welcome-title">How can I assist you?</div>
+    <div class="welcome-sub">Ask about our services, request a quote, or book a consultation.</div>
+  `;
+  chatBox.appendChild(w);
+}
+
+function hideSuggestions() {
+  const s = document.getElementById("suggestions");
+  if (s) s.style.display = "none";
+}
+
+function showSuggestions() {
+  const s = document.getElementById("suggestions");
+  if (s) s.style.display = "flex";
 }
 </script>
-
 </body>
 </html>
