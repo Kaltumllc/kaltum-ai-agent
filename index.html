@@ -38,10 +38,10 @@
     .message {
         margin: 10px 0;
         max-width: 80%;
-        padding: 10px;
-        border-radius: 10px;
+        padding: 12px;
+        border-radius: 12px;
         word-wrap: break-word;
-        line-height: 1.4;
+        line-height: 1.5;
         animation: fadeIn 0.3s ease-in;
     }
 
@@ -66,13 +66,21 @@
         padding: 10px;
         border: none;
         outline: none;
+        border-radius: 5px;
     }
 
     button {
-        padding: 10px;
+        padding: 10px 15px;
         background: #38bdf8;
         border: none;
         cursor: pointer;
+        margin-left: 5px;
+        border-radius: 5px;
+    }
+
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 
     .typing {
@@ -80,7 +88,6 @@
         opacity: 0.7;
     }
 
-    /* 🔥 Smooth message animation */
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -103,63 +110,87 @@
 
     <div class="input-area">
         <input id="userInput" placeholder="Type your message..." />
-        <button onclick="sendMessage()">Send</button>
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
     </div>
 </div>
 
 <script>
+const API_URL = "https://kaltum-ai-agent.onrender.com/chat";
+
 async function sendMessage() {
-    let inputField = document.getElementById("userInput");
-    let input = inputField.value.trim();
+    const inputField = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const chatBox = document.getElementById("chatBox");
+
+    const input = inputField.value.trim();
     if (!input) return;
 
-    let chatBox = document.getElementById("chatBox");
+    // Disable button to prevent spam
+    sendBtn.disabled = true;
 
     // USER MESSAGE
-    let userMsg = document.createElement("div");
-    userMsg.className = "message user";
-    userMsg.innerText = input;
-    chatBox.appendChild(userMsg);
+    appendMessage(input, "user");
 
     inputField.value = "";
 
     // TYPING INDICATOR
-    let typing = document.createElement("div");
-    typing.className = "message bot typing";
-    typing.innerText = "AI is thinking...";
-    chatBox.appendChild(typing);
+    const typing = appendMessage("AI is thinking...", "bot typing");
 
+    scrollToBottom();
+
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ user_input: input })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        typing.remove();
+
+        appendMessage(
+            data.response || "⚠️ No response from AI",
+            "bot"
+        );
+
+    } catch (error) {
+        typing.innerText = "❌ Server is waking up... try again in a few seconds";
+        console.error("Error:", error);
+    } finally {
+        sendBtn.disabled = false;
+        scrollToBottom();
+    }
+}
+
+// Reusable message function
+function appendMessage(text, className) {
+    const chatBox = document.getElementById("chatBox");
+
+    const msg = document.createElement("div");
+    msg.className = `message ${className}`;
+    msg.innerText = text;
+
+    chatBox.appendChild(msg);
+    return msg;
+}
+
+// Smooth scroll
+function scrollToBottom() {
+    const chatBox = document.getElementById("chatBox");
     chatBox.scrollTo({
         top: chatBox.scrollHeight,
         behavior: "smooth"
     });
-
-    try {
-        let response = await fetch("http://127.0.0.1:8000/chat?user_input=" + encodeURIComponent(input), {
-            method: "POST"
-        });
-
-        let data = await response.json();
-
-        typing.remove();
-
-        let botMsg = document.createElement("div");
-        botMsg.className = "message bot";
-        botMsg.innerText = data.response;
-
-        chatBox.appendChild(botMsg);
-
-        chatBox.scrollTo({
-            top: chatBox.scrollHeight,
-            behavior: "smooth"
-        });
-
-    } catch (error) {
-        typing.innerText = "❌ Error connecting to server";
-    }
 }
 
-// 🔥 ENTER KEY SUPPORT (clean)
+// ENTER KEY SUPPORT
 document.getElementById("userInput").addEventListener("keydown", function(e) {
     if (e.key === "Enter") {
         e.preventDefault();
