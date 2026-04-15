@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kaltum AI</title>
+
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: white;
+        margin: 0;
+    }
+
+    .container {
+        max-width: 600px;
+        margin: auto;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .header {
+        padding: 15px;
+        font-size: 20px;
+        text-align: center;
+        background: #1e293b;
+        font-weight: bold;
+    }
+
+    #chatBox {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .message {
+        margin: 10px 0;
+        max-width: 80%;
+        padding: 10px;
+        border-radius: 10px;
+        word-wrap: break-word;
+        line-height: 1.4;
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    .user {
+        background: #38bdf8;
+        align-self: flex-end;
+    }
+
+    .bot {
+        background: #334155;
+        align-self: flex-start;
+    }
+
+    .input-area {
+        display: flex;
+        padding: 10px;
+        background: #1e293b;
+    }
+
+    input {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        outline: none;
+    }
+
+    button {
+        padding: 10px;
+        background: #38bdf8;
+        border: none;
+        cursor: pointer;
+    }
+
+    .typing {
+        font-style: italic;
+        opacity: 0.7;
+    }
+
+    /* 🔥 Smooth message animation */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">🚀 Kaltum AI Assistant</div>
+
+    <div id="chatBox"></div>
+
+    <div class="input-area">
+        <input id="userInput" placeholder="Type your message..." />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+async function sendMessage() {
+    let inputField = document.getElementById("userInput");
+    let input = inputField.value.trim();
+    if (!input) return;
+
+    let chatBox = document.getElementById("chatBox");
+
+    // USER MESSAGE
+    let userMsg = document.createElement("div");
+    userMsg.className = "message user";
+    userMsg.innerText = input;
+    chatBox.appendChild(userMsg);
+
+    inputField.value = "";
+
+    // TYPING INDICATOR
+    let typing = document.createElement("div");
+    typing.className = "message bot typing";
+    typing.innerText = "AI is thinking...";
+    chatBox.appendChild(typing);
+
+    chatBox.scrollTo({
+        top: chatBox.scrollHeight,
+        behavior: "smooth"
+    });
+
+    try {
+        let response = await fetch("http://127.0.0.1:8000/chat?user_input=" + encodeURIComponent(input), {
+            method: "POST"
+        });
+
+        let data = await response.json();
+
+        typing.remove();
+
+        let botMsg = document.createElement("div");
+        botMsg.className = "message bot";
+        botMsg.innerText = data.response;
+
+        chatBox.appendChild(botMsg);
+
+        chatBox.scrollTo({
+            top: chatBox.scrollHeight,
+            behavior: "smooth"
+        });
+
+    } catch (error) {
+        typing.innerText = "❌ Error connecting to server";
+    }
+}
+
+// 🔥 ENTER KEY SUPPORT (clean)
+document.getElementById("userInput").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+</script>
+
+</body>
+</html>
